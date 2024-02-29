@@ -11,12 +11,12 @@ param baseTime string = utcNow()
 
 var configurationName = 'ServerConfiguration'
 var bundleName = '${configurationName}${empty(version) ? '' : '-v${version}'}.ps1'
-var packageName = 'WebDeploy.zip'
+var packageName = 'WebDeploy${empty(version) ? '' : '-v${version}'}.zip'
 
 var sasProperties = {
   canonicalizedResource: '/blob/${storageAccount.name}'
   signedResourceTypes: 'sco'
-  signedPermission: 'rltf'
+  signedPermission: 'rl'
   signedExpiry: dateTimeAdd(baseTime, 'PT1H')
   signedProtocol: 'https'
   signedServices: 'b'
@@ -63,13 +63,16 @@ resource uploadScript 'Microsoft.Resources/deploymentScripts@2020-10-01' = {
         value: loadTextContent('../../dsc/${configurationName}.ps1')
       }
     ]
-    scriptContent: 'echo "$CONTENT" > ${bundleName} && az storage blob upload -f ${bundleName} -c ${configContainer.name} -n ${bundleName} --overwrite'
+    scriptContent: 'echo "$CONTENT" > ${bundleName} && az storage blob upload --file ${bundleName} --container-name ${configContainer.name} --name ${bundleName}'
   }
 }
 
 resource automationAccount 'Microsoft.Automation/automationAccounts@2023-11-01' = {
   name: 'aa-${name}'
   location: location
+  identity: {
+    type: 'SystemAssigned'
+  }
   properties: {
     sku: {
       name: skuName
@@ -79,10 +82,21 @@ resource automationAccount 'Microsoft.Automation/automationAccounts@2023-11-01' 
   }
 }
 
+resource webAdministration 'Microsoft.Automation/automationAccounts/modules@2023-11-01' = {
+  name: 'xWebAdministration'
+  parent: automationAccount
+  properties: {
+    contentLink: {
+      uri: 'https://www.powershellgallery.com/api/v2/package/xWebAdministration/3.3.0'
+    }
+  }
+}
+
 resource configuration 'Microsoft.Automation/automationAccounts/configurations@2023-11-01' = {
   parent: automationAccount
   dependsOn: [ uploadScript ]
   name: configurationName
+  location: location
   properties: {
     source: {
       type: 'uri'
@@ -94,10 +108,16 @@ resource configuration 'Microsoft.Automation/automationAccounts/configurations@2
 
 resource nodeConfiguration 'Microsoft.Automation/automationAccounts/nodeConfigurations@2023-11-01' = {
   parent: automationAccount
+  dependsOn: [ uploadScript ]
   name: '${configuration.name}.localhost'
   properties: {
     configuration: {
       name: configuration.name
+    }
+    source: {
+      type: 'uri'
+      value: '${storageAccount.properties.primaryEndpoints.blob}${configContainer.name}/${bundleName}?${storageAccount.listAccountSas('2021-04-01', sasProperties).accountSasToken}'
+      version: version
     }
     incrementNodeConfigurationBuild: true
   }
@@ -105,10 +125,10 @@ resource nodeConfiguration 'Microsoft.Automation/automationAccounts/nodeConfigur
 
 resource compilationJob 'Microsoft.Automation/automationAccounts/compilationjobs@2019-06-01' = {
   parent: automationAccount
-  name: guid(automationAccount.id)
+  name: guid(automationAccount.id, configuration.name, baseTime)
   properties: {
     configuration: {
-      name: nodeConfiguration.name
+      name: configuration.name
     }
     parameters: {
       siteName: name
