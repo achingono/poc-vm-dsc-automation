@@ -7,12 +7,30 @@ resource virtualNetwork 'Microsoft.Network/virtualNetworks@2022-11-01' existing 
   name: 'vnet-${name}'
 }
 
+resource subnet 'Microsoft.Network/virtualNetworks/subnets@2022-11-01' existing = {
+  name: 'default'
+  parent: virtualNetwork
+}
+
 resource storageAccount 'Microsoft.Storage/storageAccounts@2021-06-01' = {
   name: 'stg${replace(name,'-','')}'
   location: location
   kind: kind
   sku: {
     name: sku
+  }
+  properties: {
+    networkAcls: {
+      bypass: 'Logging, Metrics, AzureServices'
+      defaultAction: 'Deny'
+      ipRules: []
+      virtualNetworkRules: [
+        {
+          action: 'Allow'
+          id: subnet.id
+        }
+      ]
+    }
   }
 }
 

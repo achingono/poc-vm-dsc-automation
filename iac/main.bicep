@@ -129,12 +129,27 @@ module shutdown 'modules/shutdownSchedule.bicep' = {
   }
 }
 
+module uploadScript 'modules/uploadScript.bicep' = {
+  name: '${deployment().name}--uploadScript'
+  scope: resourceGroup
+  dependsOn: [
+    virtualMachine
+    storage
+  ]
+  params: {
+    name: resourceName
+    location: location
+    version: version
+  }
+}
+
 module automationAccount 'modules/automationAccount.bicep' = {
   name: '${deployment().name}--automationAccount'
   scope: resourceGroup
   dependsOn: [
     virtualMachine
     storage
+    uploadScript
   ]
   params: {
     name: resourceName

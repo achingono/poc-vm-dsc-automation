@@ -10,16 +10,32 @@ resource virtualNetwork 'Microsoft.Network/virtualNetworks@2022-11-01' = {
         '10.0.0.0/16'
       ]
     }
-    subnets: [
+    enableDdosProtection: false
+  }
+}
+
+resource subnet 'Microsoft.Network/virtualNetworks/subnets@2022-11-01' = {
+  name: 'default'
+  parent: virtualNetwork
+  properties: {
+    addressPrefix: '10.0.2.0/24'
+    privateEndpointNetworkPolicies: 'Enabled'
+    privateLinkServiceNetworkPolicies: 'Enabled'
+    serviceEndpoints: [
       {
-        name: 'default'
+        service: 'Microsoft.Storage'
+        locations: [
+          location
+        ]
+      }
+    ]
+    delegations: [
+      {
+        name: 'Microsoft.ContainerInstance.containerGroups'
         properties: {
-          addressPrefix: '10.0.2.0/24'
-          privateEndpointNetworkPolicies: 'Disabled'
-          privateLinkServiceNetworkPolicies: 'Enabled'
+          serviceName: 'Microsoft.ContainerInstance/containerGroups'
         }
       }
     ]
-    enableDdosProtection: false
   }
 }

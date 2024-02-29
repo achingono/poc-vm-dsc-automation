@@ -41,32 +41,6 @@ resource deployContainer 'Microsoft.Storage/storageAccounts/blobServices/contain
   parent: blobService
 }
 
-resource uploadScript 'Microsoft.Resources/deploymentScripts@2020-10-01' = {
-  name: 'ds-upload-configuration'
-  location: location
-  kind: 'AzureCLI'
-  properties: {
-    azCliVersion: '2.26.1'
-    timeout: 'PT5M'
-    retentionInterval: 'PT1H'
-    environmentVariables: [
-      {
-        name: 'AZURE_STORAGE_ACCOUNT'
-        value: storageAccount.name
-      }
-      {
-        name: 'AZURE_STORAGE_KEY'
-        secureValue: storageAccount.listKeys().keys[0].value
-      }
-      {
-        name: 'CONTENT'
-        value: loadTextContent('../../dsc/${configurationName}.ps1')
-      }
-    ]
-    scriptContent: 'echo "$CONTENT" > ${bundleName} && az storage blob upload --file ${bundleName} --container-name ${configContainer.name} --name ${bundleName}'
-  }
-}
-
 resource automationAccount 'Microsoft.Automation/automationAccounts@2023-11-01' = {
   name: 'aa-${name}'
   location: location
@@ -94,7 +68,6 @@ resource webAdministration 'Microsoft.Automation/automationAccounts/modules@2023
 
 resource configuration 'Microsoft.Automation/automationAccounts/configurations@2023-11-01' = {
   parent: automationAccount
-  dependsOn: [ uploadScript ]
   name: configurationName
   location: location
   properties: {
@@ -108,7 +81,6 @@ resource configuration 'Microsoft.Automation/automationAccounts/configurations@2
 
 resource nodeConfiguration 'Microsoft.Automation/automationAccounts/nodeConfigurations@2023-11-01' = {
   parent: automationAccount
-  dependsOn: [ uploadScript ]
   name: '${configuration.name}.localhost'
   properties: {
     configuration: {
