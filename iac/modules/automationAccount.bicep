@@ -133,7 +133,7 @@ resource compilationJob 'Microsoft.Automation/automationAccounts/compilationjobs
     parameters: {
       siteName: name
       applicationPool: replace(name, '-', '')
-      packageUrl: '${storageAccount.properties.primaryEndpoints.blob}${deployContainer.name}/${packageName}'
+      packageUrl: '${storageAccount.properties.primaryEndpoints.blob}${deployContainer.name}/${packageName}?${storageAccount.listAccountSas('2021-04-01', sasProperties).accountSasToken}'
       packageName: packageName
       decryptionKey: decryptionKey
       validationKey: validationKey
