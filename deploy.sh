@@ -31,42 +31,71 @@ VIRTUAL_MACHINE=vm-$NAME-$CODE
 # create resource group
 az group create --name $RESOURCE_GROUP --location $LOCATION
 
-# create storage account
-az storage account create \
-    --name $STORAGE_ACCOUNT \
-    --resource-group $RESOURCE_GROUP \
-    --location $LOCATION \
-    --sku Standard_LRS
+# check if storage account key has already been created
+STORAGE_ACCOUNT_KEY=$(az storage account keys list --resource-group $RESOURCE_GROUP --account-name $STORAGE_ACCOUNT --query [0].value --output tsv)
 
-# Create blob containers if they do not exist
-az storage container create \
-    --account-name $STORAGE_ACCOUNT \
-    --name $CONFIG_CONTAINER \
-    --public-access off
+if [ "$STORAGE_ACCOUNT_KEY" == "" ]; then
+    # create storage account
+    az storage account create \
+        --name $STORAGE_ACCOUNT \
+        --resource-group $RESOURCE_GROUP \
+        --location $LOCATION \
+        --sku Standard_LRS
 
-az storage container create \
-    --account-name $STORAGE_ACCOUNT \
-    --name $DEPLOY_CONTAINER \
-    --public-access off        
+    # get storage account key
+    STORAGE_ACCOUNT_KEY=$(az storage account keys list --resource-group $RESOURCE_GROUP --account-name $STORAGE_ACCOUNT --query [0].value --output tsv)
+fi
 
-# upload server configuration package to storage account
-az storage blob upload \
-    --account-name $STORAGE_ACCOUNT \
-    --container-name $CONFIG_CONTAINER \
-    --name ServerConfiguration-v$VERSION.zip \
-    --file ./artifacts/ServerConfiguration.zip \
-    --overwrite
+# check if storage container exists
+CONFIG_CONTAINER_EXISTS=$(az storage container exists --account-name $STORAGE_ACCOUNT --name $CONFIG_CONTAINER --account-key $STORAGE_ACCOUNT_KEY --output tsv)
 
-# upload web deploy package to storage account
-az storage blob upload \
-    --account-name $STORAGE_ACCOUNT \
-    --container-name $DEPLOY_CONTAINER \
-    --name WebDeploy-v$VERSION.zip \
-    --file ./artifacts/WebDeploy.zip \
-    --overwrite
+if [ "$CONFIG_CONTAINER_EXISTS" == "False" ]; then
+    # Create blob container if it does not exist
+    az storage container create \
+        --account-name $STORAGE_ACCOUNT \
+        --account-key $STORAGE_ACCOUNT_KEY \
+        --name $CONFIG_CONTAINER \
+        --public-access off
+fi
 
-# remove invalid characters from storage account
-az vm extension delete --resource-group $RESOURCE_GROUP --vm-name $VIRTUAL_MACHINE --name Microsoft.Powershell.DSC
+DEPLOY_CONTAINER_EXISTS=$(az storage container exists --account-name $STORAGE_ACCOUNT --name $DEPLOY_CONTAINER --account-key $STORAGE_ACCOUNT_KEY --output tsv)
+
+if [ "$DEPLOY_CONTAINER_EXISTS" == "False" ]; then
+    # Create blob container if it does not exist
+    az storage container create \
+        --account-name $STORAGE_ACCOUNT \
+        --account-key $STORAGE_ACCOUNT_KEY \
+        --name $DEPLOY_CONTAINER \
+        --public-access off
+fi
+
+# check if file has already been uploaded
+CONFIG_FILE_EXISTS=$(az storage blob exists --account-name $STORAGE_ACCOUNT --container-name $CONFIG_CONTAINER --name ServerConfiguration-v$VERSION.zip --output tsv)
+
+if [ "$CONFIG_FILE_EXISTS" == "False" ]; then
+    # upload server configuration package to storage account
+    az storage blob upload \
+        --account-name $STORAGE_ACCOUNT \
+        --container-name $CONFIG_CONTAINER \
+        --account-key $STORAGE_ACCOUNT_KEY \
+        --name ServerConfiguration-v$VERSION.zip \
+        --file ./artifacts/ServerConfiguration.zip \
+        --overwrite
+fi
+
+# check if file has already been uploaded
+DEPLOY_FILE_EXISTS=$(az storage blob exists --account-name $STORAGE_ACCOUNT --container-name $DEPLOY_CONTAINER --name WebDeploy-v$VERSION.zip --output tsv)
+
+if [ "$DEPLOY_FILE_EXISTS" == "False" ]; then
+    # upload web deploy package to storage account
+    az storage blob upload \
+        --account-name $STORAGE_ACCOUNT \
+        --container-name $DEPLOY_CONTAINER \
+        --account-key $STORAGE_ACCOUNT_KEY \
+        --name WebDeploy-v$VERSION.zip \
+        --file ./artifacts/WebDeploy.zip \
+        --overwrite
+fi
 
 # provision infrastructure
 az deployment sub create \
@@ -78,7 +107,9 @@ az deployment sub create \
                 uniqueSuffix=$CODE \
                 adminUsername=$USERNAME \
                 adminPassword=$PASSWORD \
-                version=$VERSION
+                version=$VERSION \
+                decryptionKey=C070562966C21059E353D2821CAB8642380E77F56CAC2EC9B963C32BEC9EBE83 \
+                validationKey=966BC38D1918A269803D9E2C4A13F40BEF4B024E
 
 duration=$SECONDS
 echo "End time: $(date)"
