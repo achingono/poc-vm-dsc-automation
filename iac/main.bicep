@@ -68,6 +68,9 @@ module networkInterface 'modules/networkInterface.bicep' = {
 module storage 'modules/storageAccount.bicep' = {
   name: '${deployment().name}--storage'
   scope: resourceGroup
+  dependsOn:[
+    virtualNetwork
+  ]
   params: {
     name: resourceName
     location: location
