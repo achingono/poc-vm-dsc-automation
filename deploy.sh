@@ -46,18 +46,6 @@ if [ "$STORAGE_ACCOUNT_KEY" == "" ]; then
     STORAGE_ACCOUNT_KEY=$(az storage account keys list --resource-group $RESOURCE_GROUP --account-name $STORAGE_ACCOUNT --query [0].value --output tsv)
 fi
 
-# check if storage container exists
-CONFIG_CONTAINER_EXISTS=$(az storage container exists --account-name $STORAGE_ACCOUNT --name $CONFIG_CONTAINER --account-key $STORAGE_ACCOUNT_KEY --output tsv)
-
-if [ "$CONFIG_CONTAINER_EXISTS" == "False" ]; then
-    # Create blob container if it does not exist
-    az storage container create \
-        --account-name $STORAGE_ACCOUNT \
-        --account-key $STORAGE_ACCOUNT_KEY \
-        --name $CONFIG_CONTAINER \
-        --public-access off
-fi
-
 DEPLOY_CONTAINER_EXISTS=$(az storage container exists --account-name $STORAGE_ACCOUNT --name $DEPLOY_CONTAINER --account-key $STORAGE_ACCOUNT_KEY --output tsv)
 
 if [ "$DEPLOY_CONTAINER_EXISTS" == "False" ]; then
@@ -67,20 +55,6 @@ if [ "$DEPLOY_CONTAINER_EXISTS" == "False" ]; then
         --account-key $STORAGE_ACCOUNT_KEY \
         --name $DEPLOY_CONTAINER \
         --public-access off
-fi
-
-# check if file has already been uploaded
-CONFIG_FILE_EXISTS=$(az storage blob exists --account-name $STORAGE_ACCOUNT --container-name $CONFIG_CONTAINER --name ServerConfiguration-v$VERSION.zip --output tsv)
-
-if [ "$CONFIG_FILE_EXISTS" == "False" ]; then
-    # upload server configuration package to storage account
-    az storage blob upload \
-        --account-name $STORAGE_ACCOUNT \
-        --container-name $CONFIG_CONTAINER \
-        --account-key $STORAGE_ACCOUNT_KEY \
-        --name ServerConfiguration-v$VERSION.zip \
-        --file ./artifacts/ServerConfiguration.zip \
-        --overwrite
 fi
 
 # check if file has already been uploaded
