@@ -7,8 +7,13 @@ resource virtualNetwork 'Microsoft.Network/virtualNetworks@2022-11-01' existing 
   name: 'vnet-${name}'
 }
 
-resource subnet 'Microsoft.Network/virtualNetworks/subnets@2022-11-01' existing = {
-  name: 'default'
+resource serviceSubnet 'Microsoft.Network/virtualNetworks/subnets@2022-11-01' existing = {
+  name: 'services'
+  parent: virtualNetwork
+}
+
+resource scriptSubnet 'Microsoft.Network/virtualNetworks/subnets@2022-11-01' existing = {
+  name: 'scripts'
   parent: virtualNetwork
 }
 
@@ -27,7 +32,11 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2021-06-01' = {
       virtualNetworkRules: [
         {
           action: 'Allow'
-          id: subnet.id
+          id: serviceSubnet.id
+        }
+        {
+          action: 'Allow'
+          id: scriptSubnet.id
         }
       ]
     }
@@ -54,7 +63,7 @@ resource privateEndpoint 'Microsoft.Network/privateEndpoints@2023-09-01' = {
   location: location
   properties: {
     subnet: {
-      id: virtualNetwork.properties.subnets[0].id
+      id: serviceSubnet.id
     }
     privateLinkServiceConnections: [
       {
@@ -71,7 +80,7 @@ resource privateEndpoint 'Microsoft.Network/privateEndpoints@2023-09-01' = {
 }
 
 resource privateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = {
-  name: 'privatelink.blob.core.windows.net'
+  name: 'privatelink.blob.${environment().suffixes.storage}'
   location: 'global'
 }
 

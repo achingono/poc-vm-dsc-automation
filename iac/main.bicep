@@ -133,7 +133,7 @@ module uploadScript 'modules/uploadScript.bicep' = {
   name: '${deployment().name}--uploadScript'
   scope: resourceGroup
   dependsOn: [
-    virtualMachine
+    virtualNetwork
     storage
   ]
   params: {

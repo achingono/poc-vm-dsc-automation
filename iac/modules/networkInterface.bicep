@@ -11,6 +11,11 @@ resource virtualNetwork 'Microsoft.Network/virtualNetworks@2022-11-01' existing 
   name: 'vnet-${name}'
 }
 
+resource serviceSubnet 'Microsoft.Network/virtualNetworks/subnets@2022-11-01' existing = {
+  name: 'services'
+  parent: virtualNetwork
+}
+
 resource networkSecurityGroup 'Microsoft.Network/networkSecurityGroups@2022-11-01' existing = {
   name: 'nsg-${name}'
 }
@@ -35,7 +40,7 @@ resource networkInterface 'Microsoft.Network/networkInterfaces@2022-05-01' = {
             }
           }
           subnet: {
-            id: virtualNetwork.properties.subnets[0].id
+            id: serviceSubnet.id
           }
           primary: true
           privateIPAddressVersion: 'IPv4'

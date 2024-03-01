@@ -14,8 +14,26 @@ resource virtualNetwork 'Microsoft.Network/virtualNetworks@2022-11-01' = {
   }
 }
 
-resource subnet 'Microsoft.Network/virtualNetworks/subnets@2022-11-01' = {
-  name: 'default'
+resource serviceSubnet 'Microsoft.Network/virtualNetworks/subnets@2022-11-01' = {
+  name: 'services'
+  parent: virtualNetwork
+  properties: {
+    addressPrefix: '10.0.1.0/24'
+    privateEndpointNetworkPolicies: 'Enabled'
+    privateLinkServiceNetworkPolicies: 'Enabled'
+    serviceEndpoints: [
+      {
+        service: 'Microsoft.Storage'
+        locations: [
+          location
+        ]
+      }
+    ]
+  }
+}
+
+resource scriptSubnet 'Microsoft.Network/virtualNetworks/subnets@2022-11-01' = {
+  name: 'scripts'
   parent: virtualNetwork
   properties: {
     addressPrefix: '10.0.2.0/24'

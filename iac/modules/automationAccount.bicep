@@ -97,7 +97,7 @@ resource nodeConfiguration 'Microsoft.Automation/automationAccounts/nodeConfigur
 
 resource compilationJob 'Microsoft.Automation/automationAccounts/compilationjobs@2019-06-01' = {
   parent: automationAccount
-  name: guid(automationAccount.id, configuration.name, baseTime)
+  name: guid(automationAccount.id, configuration.name, version)
   properties: {
     configuration: {
       name: configuration.name

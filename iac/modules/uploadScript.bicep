@@ -9,8 +9,8 @@ resource virtualNetwork 'Microsoft.Network/virtualNetworks@2022-11-01' existing 
   name: 'vnet-${name}'
 }
 
-resource subnet 'Microsoft.Network/virtualNetworks/subnets@2022-11-01' existing = {
-  name: 'default'
+resource scriptSubnet 'Microsoft.Network/virtualNetworks/subnets@2022-11-01' existing = {
+  name: 'scripts'
   parent: virtualNetwork
 }
 
@@ -89,7 +89,7 @@ resource uploadScript 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
     containerSettings: {
       subnetIds: [
         {
-          id: subnet.id
+          id: scriptSubnet.id
         }
       ]
     }
